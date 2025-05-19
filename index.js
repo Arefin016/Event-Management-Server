@@ -2,6 +2,7 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const bcrypt = require("bcrypt");
@@ -28,6 +29,21 @@ async function run() {
     await client.connect();
 
     const userCollection = client.db("EventManagement").collection("users");
+    const viewEventsCollection = client
+      .db("EventManagement")
+      .collection("view-events");
+    const createEventCollection = client
+      .db("EventManagement")
+      .collection("create-event");
+
+    // jwt related api
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
 
     //user data save
     app.post("/users", async (req, res) => {
@@ -40,6 +56,20 @@ async function run() {
         photo: user.photo,
       };
       const result = await userCollection.insertOne(newUser);
+      res.send(result);
+    });
+
+    // View all events
+    app.get("/view-events", async (req, res) => {
+      const result = await viewEventsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // create events
+    app.post("/create-event", async (req, res) => {
+      const creatEvent = req.body;
+      console.log(creatEvent);
+      const result = await createEventCollection.insertOne(creatEvent);
       res.send(result);
     });
 
