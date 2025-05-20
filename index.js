@@ -60,15 +60,22 @@ async function run() {
     });
 
     // View all events
-    app.get("/view-events", async (req, res) => {
-      const result = await viewEventsCollection.find().toArray();
+    app.get("/create-event", async (req, res) => {
+      const result = await createEventCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/spefic-event", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await createEventCollection.find(query).toArray();
       res.send(result);
     });
 
     // create events
     app.post("/create-event", async (req, res) => {
       const creatEvent = req.body;
-      console.log(creatEvent);
+      // console.log(creatEvent);
       const result = await createEventCollection.insertOne(creatEvent);
       res.send(result);
     });
