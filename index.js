@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const app = express();
 const cors = require("cors");
@@ -45,8 +45,24 @@ async function run() {
       res.send({ token });
     });
 
+    // middlewares
+    const verifyToken = (req, res, next) => {
+      console.log("inside verify token", req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "forbidden access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "forbidden access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
     //user data save
-    app.post("/users", async (req, res) => {
+    app.post("/users", verifyToken, async (req, res) => {
       const user = req.body;
       const hashedPassword = await bcrypt.hash(user.password, saltRounds);
       const newUser = {
@@ -65,17 +81,24 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/spefic-event", async (req, res) => {
+    app.get("/specefic-event", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       const result = await createEventCollection.find(query).toArray();
       res.send(result);
     });
 
+    app.delete("/specefic-event/:id", async (req, res) => {
+      console.log(req.headers);
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await createEventCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // create events
     app.post("/create-event", async (req, res) => {
       const creatEvent = req.body;
-      // console.log(creatEvent);
       const result = await createEventCollection.insertOne(creatEvent);
       res.send(result);
     });
