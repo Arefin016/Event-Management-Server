@@ -75,6 +75,29 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/login", async (req, res) => {
+      const { email, password } = req.body;
+      const user = await userCollection.findOne({ email });
+      if (!user) {
+        return res.status(404).send({ message: "User not found" });
+      }
+      const isPasswordMatch = await bcrypt.compare(password, user.password);
+      if (!isPasswordMatch) {
+        return res.status(401).send({ message: "Incorrect password" });
+      }
+      const token = jwt.sign(
+        { email: user.email },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+          expiresIn: "1h",
+        }
+      );
+      res.send({
+        message: "Login successful",
+        token,
+      });
+    });
+
     // View all events
     app.get("/create-event", async (req, res) => {
       const result = await createEventCollection.find().toArray();
@@ -85,6 +108,32 @@ async function run() {
       const email = req.query.email;
       const query = { email: email };
       const result = await createEventCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // specific event
+    app.get("/specefic-event/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await createEventCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Specific event update
+    app.patch("/specefic-event/:id", verifyToken, async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          name: item.name,
+          date: item.date,
+          time: item.time,
+          location: item.location,
+          description: item.description,
+        },
+      };
+      const result = await createEventCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
 
