@@ -53,7 +53,7 @@ async function run() {
       }
       const token = req.headers.authorization.split(" ")[1];
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
-        if (err) {
+        if (error) {
           return res.status(401).send({ message: "forbidden access" });
         }
         req.decoded = decoded;
@@ -62,7 +62,7 @@ async function run() {
     };
 
     //user data save
-    app.post("/users", verifyToken, async (req, res) => {
+    app.post("/users", async (req, res) => {
       const user = req.body;
       const hashedPassword = await bcrypt.hash(user.password, saltRounds);
       const newUser = {
@@ -88,18 +88,32 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/specefic-event/:id", async (req, res) => {
-      console.log(req.headers);
+    app.delete("/specefic-event/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await createEventCollection.deleteOne(query);
+      const userEmail = req.decoded.email;
+      const event = await createEventCollection.findOne({
+        _id: new ObjectId(id),
+      });
+      if (!event) {
+        return res.status(404).send({ message: "Event not found" });
+      }
+      if (event.createdBy !== userEmail) {
+        return res
+          .status(403)
+          .send({ message: "Forbidden: You are not the owner of this event" });
+      }
+      const result = await createEventCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
     // create events
-    app.post("/create-event", async (req, res) => {
-      const creatEvent = req.body;
-      const result = await createEventCollection.insertOne(creatEvent);
+    app.post("/create-event", verifyToken, async (req, res) => {
+      const event = req.body;
+      const userEmail = req.decoded.email;
+      event.createdBy = userEmail;
+      const result = await createEventCollection.insertOne(event);
       res.send(result);
     });
 
